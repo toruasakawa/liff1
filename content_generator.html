@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>難病ナビ コンテンツジェネレーター</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --teal: #1D9E75;
+    --teal-dark: #085041;
+    --teal-light: #E1F5EE;
+    --amber: #EF9F27;
+    --amber-light: #FAEEDA;
+    --purple: #7F77DD;
+    --purple-light: #EEEDFE;
+    --coral: #D85A30;
+    --coral-light: #FAECE7;
+    --gray: #2C2C2A;
+    --gray-mid: #73726c;
+    --gray-light: #F1EFE8;
+    --border: #E0DED6;
+    --white: #FFFFFF;
+    --bg: #F8F7F3;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--gray);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-dot { width: 10px; height: 10px; background: var(--teal); border-radius: 50%; }
+  .logo-text { font-size: 15px; font-weight: 700; color: var(--teal-dark); letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--gray-mid); margin-left: 4px; }
+
+  .main { display: grid; grid-template-columns: 360px 1fr; min-height: calc(100vh - 56px); }
+
+  /* LEFT PANEL */
+  .left {
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--gray-mid);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .field-hint { font-size: 11px; color: var(--gray-mid); line-height: 1.5; }
+
+  select, input[type="text"], textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--gray);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input:focus, textarea:focus {
+    border-color: var(--teal);
+    background: var(--white);
+  }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+
+  .content-types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-btn {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-mid);
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .type-btn.active {
+    border-color: var(--teal);
+    background: var(--teal-light);
+    color: var(--teal-dark);
+  }
+  .type-btn:hover:not(.active) { border-color: #aaa; }
+  .type-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  .framing-box {
+    background: var(--teal-light);
+    border: 1px solid #9FE1CB;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .framing-label { font-size: 10px; font-weight: 700; color: var(--teal-dark); letter-spacing: 0.5px; margin-bottom: 4px; }
+  .framing-text { font-size: 11px; color: var(--teal-dark); line-height: 1.6; }
+
+  .gen-btn {
+    padding: 12px 20px;
+    background: var(--teal);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.3px;
+  }
+  .gen-btn:hover { background: var(--teal-dark); }
+  .gen-btn:active { transform: scale(0.98); }
+  .gen-btn:disabled { background: var(--gray-mid); cursor: not-allowed; }
+  .gen-btn .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .gen-btn.loading .spinner { display: block; }
+  .gen-btn.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* RIGHT PANEL */
+  .right {
+    padding: 24px 32px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .output-title { font-size: 16px; font-weight: 700; color: var(--teal-dark); }
+  .output-meta { font-size: 11px; color: var(--gray-mid); }
+
+  .action-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .action-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--white);
+    color: var(--gray);
+    transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .action-btn.primary { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+
+  .result-block {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .result-hdr {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-hdr-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .result-hdr-title { font-size: 12px; font-weight: 700; flex: 1; }
+  .copy-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--gray-mid);
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .copy-btn.copied { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+
+  .result-body {
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--gray);
+    min-height: 80px;
+  }
+  .result-body.mono {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: #FAFAF8;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 12px;
+    color: var(--gray-mid);
+  }
+  .empty-icon { font-size: 40px; opacity: 0.3; }
+  .empty-text { font-size: 14px; font-weight: 500; }
+  .empty-sub { font-size: 12px; }
+
+  .stage-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* colors per content type */
+  .c-line { background: #E1F5EE; } .c-line .result-hdr-dot { background: var(--teal); } .c-line .result-hdr-title { color: var(--teal-dark); }
+  .c-phone { background: var(--amber-light); } .c-phone .result-hdr-dot { background: var(--amber); } .c-phone .result-hdr-title { color: var(--amber); color: #633806; }
+  .c-checklist { background: var(--purple-light); } .c-checklist .result-hdr-dot { background: var(--purple); } .c-checklist .result-hdr-title { color: #3C3489; }
+  .c-burnout { background: var(--coral-light); } .c-burnout .result-hdr-dot { background: var(--coral); } .c-burnout .result-hdr-title { color: var(--coral); }
+
+  .char-count { font-size: 10px; color: var(--gray-mid); padding: 4px 16px 10px; }
+  .char-count.warn { color: var(--coral); }
+
+  /* CSV section */
+  .csv-area {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .csv-hdr {
+    padding: 10px 16px;
+    background: var(--gray-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .csv-hdr-title { font-size: 12px; font-weight: 700; color: var(--gray); }
+  .csv-body { padding: 12px 16px; }
+  .csv-preview {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--gray-mid);
+    overflow-x: auto;
+    white-space: pre;
+    padding: 8px;
+    background: #FAFAF8;
+    border-radius: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .history-label { font-size: 11px; color: var(--gray-mid); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-dot"></div>
+  <span class="logo-text">難病ナビ</span>
+  <span class="logo-sub">コンテンツジェネレーター</span>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: 設定パネル -->
+  <div class="left">
+    <div class="panel-title">コンテンツ設定</div>
+
+    <div class="field-group">
+      <div class="field-label">ステージ</div>
+      <select id="stage">
+        <option value="s1">① 告知・精査（パニック期）</option>
+        <option value="s2">② 術前準備</option>
+        <option value="s3">③ 手術・入院</option>
+        <option value="s4">④ 治療中（化学療法・放射線）</option>
+        <option value="s5">⑤ 効果判定</option>
+        <option value="s6">⑥ 経過観察・ケアギバー回復</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">タスク・テーマ</div>
+      <div class="field-hint">どんな手続き・状況・感情について書くかを入力してください</div>
+      <input type="text" id="task" placeholder="例：傷病手当金の月次申請" />
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">困りごと・背景（任意）</div>
+      <div class="field-hint">ユーザーが直面している具体的な問題や状況</div>
+      <textarea id="context" placeholder="例：申請書が本人・会社・病院の3者を回る必要があり、どの順番で誰に渡すかわからない"></textarea>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">生成するコンテンツの種類</div>
+      <div class="content-types">
+        <label class="type-btn active" id="btn-line">
+          <input type="checkbox" name="ctype" value="line" checked hidden>
+          <div class="type-dot" style="background:var(--teal)"></div>
+          LINEメッセージ
+        </label>
+        <label class="type-btn active" id="btn-phone">
+          <input type="checkbox" name="ctype" value="phone" checked hidden>
+          <div class="type-dot" style="background:var(--amber)"></div>
+          電話スクリプト
+        </label>
+        <label class="type-btn active" id="btn-checklist">
+          <input type="checkbox" name="ctype" value="checklist" checked hidden>
+          <div class="type-dot" style="background:var(--purple)"></div>
+          書類チェックリスト
+        </label>
+        <label class="type-btn active" id="btn-burnout">
+          <input type="checkbox" name="ctype" value="burnout" checked hidden>
+          <div class="type-dot" style="background:var(--coral)"></div>
+          バーンアウトQ文
+        </label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">追加指示（任意）</div>
+      <div class="field-hint">文体・強調したいこと・避けたいことなど</div>
+      <textarea id="extra" placeholder="例：医療専門用語を避けてください。パニック期を想定した短い文体で。" style="min-height:56px"></textarea>
+    </div>
+
+    <div class="framing-box">
+      <div class="framing-label">フレーミングルール（全コンテンツ共通）</div>
+      <div class="framing-text">「あなたが元気でいることが患者への最大のケア」を自然な形でコンテンツに埋め込みます。</div>
+    </div>
+
+    <button class="gen-btn" id="genBtn" onclick="generate()">
+      <div class="spinner"></div>
+      <span class="btn-text">▶ コンテンツを生成</span>
+    </button>
+
+    <div class="history-label" id="historyLabel"></div>
+  </div>
+
+  <!-- RIGHT: 出力エリア -->
+  <div class="right" id="outputArea">
+    <div class="empty-state">
+      <div class="empty-icon">✦</div>
+      <div class="empty-text">設定を入力して生成ボタンを押してください</div>
+      <div class="empty-sub">LINEメッセージ・電話スクリプト・チェックリスト・バーンアウト質問文を一括生成します</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Type button toggle ──────────────────────────────────────
+document.querySelectorAll('.type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('active');
+    btn.querySelector('input').checked = btn.classList.contains('active');
+  });
+});
+
+// ── Stage labels ────────────────────────────────────────────
+const stageLabels = {
+  s1: '①告知・精査', s2: '②術前準備', s3: '③手術・入院',
+  s4: '④治療中', s5: '⑤効果判定', s6: '⑥経過観察'
+};
+
+const stageBgColors = {
+  s1: '#E1F5EE', s2: '#EEEDFE', s3: '#FAECE7',
+  s4: '#FAEEDA', s5: '#E6F1FB', s6: '#EAF3DE'
+};
+const stageTextColors = {
+  s1: '#085041', s2: '#3C3489', s3: '#712B13',
+  s4: '#633806', s5: '#0C447C', s6: '#27500A'
+};
+
+let generationCount = 0;
+let allCSV = [['生成日時','ステージ','タスク','種類','コンテンツ']];
+
+// ── Main generate function ───────────────────────────────────
+async function generate() {
+  const stage = document.getElementById('stage').value;
+  const task = document.getElementById('task').value.trim();
+  const context = document.getElementById('context').value.trim();
+  const extra = document.getElementById('extra').value.trim();
+  const types = [...document.querySelectorAll('input[name="ctype"]:checked')].map(i => i.value);
+
+  if (!task) { alert('タスク・テーマを入力してください'); return; }
+  if (types.length === 0) { alert('コンテンツの種類を1つ以上選択してください'); return; }
+
+  const btn = document.getElementById('genBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  const stageLabel = stageLabels[stage];
+  const stageBg = stageBgColors[stage];
+  const stageText = stageTextColors[stage];
+
+  const typePrompts = {
+    line: `【LINEメッセージ本文】
+毎朝7:00に配信する「今日の1タスク」のLINEメッセージを作成してください。
+・1タスク＝1メッセージの原則（複数タスクを詰め込まない）
+・パニック期のケアギバー妻（40代）が一人で読んですぐ動ける文体
+・「あなたが元気でいることが患者への最大のケア」というフレーミングを自然に1文入れる
+・所要時間の目安を最後に付ける（例：今日の目安：約15分）
+・LINEのテキストなので300文字以内が理想`,
+
+    phone: `【電話スクリプト】
+${task}に関して窓口に電話するための具体的なスクリプトを作成してください。
+・電話前に手元に用意するものリスト（箇条書き3〜5項目）
+・話す順序を番号付きで（①〜④程度）
+・実際に言う言葉をそのまま書く（「〇〇なんですが、△△について確認したいのですが」レベルの具体性）
+・想定される質問と返答例を2〜3つ
+・電話後の次のアクション`,
+
+    checklist: `【書類チェックリスト】
+${task}に必要な書類と確認事項のチェックリストを作成してください。
+・□ 形式のチェックボックス付きリスト
+・書類ごとに「どこで入手するか」を括弧内に明記
+・提出期限や注意事項があれば★マークで強調
+・「これだけあれば大丈夫」という安心感を与える構成`,
+
+    burnout: `【バーンアウトチェック質問文】
+${stageLabel}ステージのケアギバー向けのバーンアウトチェック質問を1問作成してください。
+・週次または月次チェックインで使用
+・「この1週間」という期間を問う形式（単発の今日ではなく継続性を確認）
+・Yes/Noまたは3択で答えられるシンプルな形式
+・イエロー信号時のフォローアクションも1行追加`
+  };
+
+  const systemPrompt = `あなたは、がん・難病患者の家族（特に40代のケアギバー妻）向けLINEサービス「難病ナビ」のコンテンツライターです。
+専門は「制度手続きの最後の1マイル」を届けること。
+対象者はパニック状態にあり、情報過多で疲弊している。
+全コンテンツに共通するフレーミングルール：「あなたが元気でいることが患者への最大のケア」を自然に埋め込む。
+医療アドバイスは行わず、制度・手続き・感情サポートに特化する。
+${extra ? `追加指示：${extra}` : ''}`;
+
+  const userContent = `
+ステージ：${stageLabel}
+タスク・テーマ：${task}
+${context ? `背景・困りごと：${context}` : ''}
+
+以下の各種類のコンテンツを生成してください。
+各コンテンツの前に【種類名】というヘッダーを必ず付けてください。
+
+${types.map(t => typePrompts[t]).join('\n\n')}
+`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }]
+      })
+    });
+
+    const data = await response.json();
+    const rawText = data.content?.map(c => c.text || '').join('') || '';
+
+    generationCount++;
+    const now = new Date().toLocaleString('ja-JP');
+    document.getElementById('historyLabel').textContent = `生成回数：${generationCount}回`;
+
+    renderOutput(rawText, stage, task, stageLabel, stageBg, stageText, types, now);
+
+  } catch (err) {
+    alert('生成中にエラーが発生しました。しばらく待ってから再試行してください。');
+    console.error(err);
+  }
+
+  btn.classList.remove('loading');
+  btn.disabled = false;
+}
+
+// ── Parse and render output ─────────────────────────────────
+function renderOutput(rawText, stage, task, stageLabel, stageBg, stageText, types, now) {
+  const area = document.getElementById('outputArea');
+
+  const typeConfig = {
+    line:      { label: 'LINEメッセージ本文', cls: 'c-line', headers: ['LINEメッセージ本文', 'LINEメッセージ', 'LINE'] },
+    phone:     { label: '電話スクリプト', cls: 'c-phone', headers: ['電話スクリプト'] },
+    checklist: { label: '書類チェックリスト', cls: 'c-checklist', headers: ['書類チェックリスト', 'チェックリスト'] },
+    burnout:   { label: 'バーンアウトチェック質問文', cls: 'c-burnout', headers: ['バーンアウトチェック', 'バーンアウト質問文', 'バーンアウトチェック質問文'] }
+  };
+
+  // Split by 【...】 headers
+  const sections = {};
+  const headerPattern = /【([^】]+)】/g;
+  const parts = rawText.split(/(?=【[^】]+】)/);
+
+  for (const part of parts) {
+    const match = part.match(/^【([^】]+)】/);
+    if (!match) continue;
+    const headerName = match[1];
+    const content = part.replace(/^【[^】]+】\s*/, '').trim();
+    for (const [typeKey, cfg] of Object.entries(typeConfig)) {
+      if (cfg.headers.some(h => headerName.includes(h))) {
+        sections[typeKey] = content;
+        break;
+      }
+    }
+  }
+
+  // If parsing failed, use raw text for first selected type
+  if (Object.keys(sections).length === 0 && types.length > 0) {
+    sections[types[0]] = rawText.trim();
+  }
+
+  let html = `
+    <div class="output-header">
+      <div>
+        <div class="output-title">${task}</div>
+        <div class="output-meta">
+          <span class="stage-badge" style="background:${stageBg};color:${stageText}">${stageLabel}</span>
+          &nbsp;${now}
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="action-btn primary" onclick="downloadCSV()">CSVダウンロード</button>
+        <button class="action-btn" onclick="downloadTXT()">TXTダウンロード</button>
+        <button class="action-btn" onclick="copyAll()">全文コピー</button>
+      </div>
+    </div>`;
+
+  // Store for download
+  window._lastRaw = rawText;
+  window._lastTask = task;
+  window._lastStage = stageLabel;
+  window._lastNow = now;
+
+  for (const typeKey of types) {
+    const cfg = typeConfig[typeKey];
+    const content = sections[typeKey] || '（この種類のコンテンツは生成されませんでした）';
+    const isMono = typeKey === 'checklist';
+    const charCount = content.length;
+    const warnClass = typeKey === 'line' && charCount > 300 ? ' warn' : '';
+
+    // Add to CSV accumulator
+    allCSV.push([now, stageLabel, task, cfg.label, content.replace(/\n/g, ' | ')]);
+
+    html += `
+      <div class="result-block">
+        <div class="result-hdr ${cfg.cls}">
+          <div class="result-hdr-dot"></div>
+          <div class="result-hdr-title">${cfg.label}</div>
+          <button class="copy-btn" onclick="copyBlock(this, '${typeKey}')">コピー</button>
+        </div>
+        <div class="result-body${isMono ? ' mono' : ''}" id="content-${typeKey}">${escapeHtml(content)}</div>
+        ${typeKey === 'line' ? `<div class="char-count${warnClass}">${charCount}文字${charCount > 300 ? '（300文字超）' : ''}</div>` : ''}
+      </div>`;
+  }
+
+  // CSV preview
+  html += `
+    <div class="csv-area">
+      <div class="csv-hdr">
+        <div class="csv-hdr-title">CSVプレビュー（累積${allCSV.length - 1}件）</div>
+        <button class="action-btn" onclick="downloadCSV()">ダウンロード</button>
+      </div>
+      <div class="csv-body">
+        <div class="csv-preview">${escapeHtml(allCSV.slice(-2).map(r => r.join('\t')).join('\n'))}</div>
+      </div>
+    </div>`;
+
+  area.innerHTML = html;
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyBlock(btn, typeKey) {
+  const el = document.getElementById('content-' + typeKey);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    btn.textContent = '✓ コピー済';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copyAll() {
+  navigator.clipboard.writeText(window._lastRaw || '');
+}
+
+function downloadTXT() {
+  if (!window._lastRaw) return;
+  const blob = new Blob([window._lastRaw], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `nanbynavi_${window._lastStage}_${window._lastTask}_${Date.now()}.txt`;
+  a.click();
+}
+
+function downloadCSV() {
+  const bom = '\uFEFF';
+  const csv = bom + allCSV.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `nanbynavi_contents_${Date.now()}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
